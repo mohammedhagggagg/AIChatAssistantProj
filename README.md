@@ -51,9 +51,18 @@ Before running the project, ensure you have:
 2. **Open the Project:** In Visual Studio or another IDE.
 3. **Configure the OpenAI API Key:**
    - Open `ChatController.cs` in the `Controllers` folder.
-   - Replace the placeholder with your API key:
+   - Ensure the following implementation is present:
      ```csharp
-     private static readonly string apiKey = "your-openai-api-key-here";
+     private readonly string apiKey;
+     private readonly IConfiguration _configuration; // For reading settings
+     private static List<Dictionary<string, object>> chatHistory = new List<Dictionary<string, object>>();
+
+     // Constructor to enable IConfiguration
+     public ChatController(IConfiguration configuration)
+     {
+         _configuration = configuration;
+         apiKey = _configuration["OpenAI:ApiKey"]; // Read API Key from appsettings.json
+     }
      ```
 4. **Restore Dependencies:**
    ```bash
@@ -137,4 +146,32 @@ This project is licensed under the MIT License.
 - **Email:** mohammedhaggagg@gmail.com  
 - **GitHub:** [mohammedhagggagg](https://github.com/mohammedhagggagg)
 
+---
+
+## Git Ignore
+
+```
+# Ignore appsettings.json to prevent uploading sensitive data (like API keys)
+appsettings.json
+appsettings.Development.json
+
+# Ignore bin and obj folders (compiled files)
+bin/
+obj/
+
+# Ignore Visual Studio user-specific files
+*.csproj.user
+.vs/
+*.suo
+
+# Ignore NuGet packages folder
+packages/
+
+# Ignore temporary files
+*.log
+*.tmp
+
+# Ignore environment-specific files
+*.env
+```
 
