@@ -1,0 +1,445 @@
+﻿@{
+    ViewBag.Title = "GPT Assistant";
+    Layout = "_Layout";
+}
+
+<div class="chat-container">
+    <div class="chat-header">
+        <i class="fas fa-robot"></i> GPT Assistant
+        <div class="header-buttons">
+            <button onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                <i class="fas fa-adjust"></i>
+            </button>
+            <button onclick="clearChat()" title="Clear Chat">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="chat-box">
+        <div class="system-message">Start a conversation with the AI assistant...</div>
+    </div>
+
+    <div class="typing-indicator" id="typing-indicator">
+        <i class="fas fa-circle-notch fa-spin"></i> AI is thinking...
+    </div>
+
+    <div class="input-container">
+        <div class="upload-buttons">
+            <div class="custom-upload-btn btn btn-primary">
+                <i class="fas fa-file-upload"></i> Upload File
+                <!-- أزلت الـ input هنا عشان الزر يكون ديكور فقط -->
+            </div>
+
+            <div class="custom-upload-btn btn btn-info">
+                <i class="fas fa-camera"></i> Upload Image
+                <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
+            </div>
+        </div>
+
+        <div id="imagePreview"></div>
+
+        <div class="input-group">
+            <input type="text"
+                   id="userInput"
+                   class="form-control"
+                   placeholder="Type your message..."
+                   onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button class="btn btn-danger" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 90%; /* زيادة العرض لاستغلال مساحة أكبر */
+            margin: 0 auto;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            background-color: var(--background-light);
+            transition: background-color 0.3s;
+            height: 100%; /* يأخذ كل الارتفاع المتاح */
+        }
+
+        body.dark-mode .chat-container {
+            background-color: var(--background-dark);
+        }
+
+        .chat-header {
+            background: #dc3545;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: relative;
+            flex-shrink: 0; /* منع الرأس من التقلص */
+        }
+
+            .chat-header .header-buttons {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                display: flex;
+                gap: 10px;
+            }
+
+            .chat-header button {
+                background: white;
+                color: #dc3545;
+                border: none;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+        #chat-box {
+            flex: 1; /* يأخذ كل المساحة المتاحة */
+            overflow-y: auto; /* إضافة scrollbar عمودي للدردشة فقط */
+            padding: 1rem;
+            background: var(--background-light);
+            scroll-behavior: smooth;
+            transition: background-color 0.3s;
+        }
+
+        body.dark-mode #chat-box {
+            background: var(--background-dark);
+        }
+
+        .message {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 15px;
+            max-width: 75%;
+            animation: fadeIn 0.5s;
+        }
+
+        .user {
+            background: #dc3545;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot {
+            background: #6c757d;
+            color: white;
+            margin-right: auto;
+            text-align: left;
+        }
+
+        .typing-indicator {
+            padding: 1rem;
+            display: none;
+            color: #666;
+            text-align: center;
+            flex-shrink: 0; /* منع التقلص */
+        }
+
+        .input-container {
+            padding: 1rem;
+            background: var(--background-light);
+            border-top: 1px solid #dee2e6;
+            transition: background-color 0.3s;
+            position: sticky; /* تثبيت الشريط في الأسفل */
+            bottom: 0; /* لضمان إنه يكون في أسفل الحاوية */
+            z-index: 10; /* لضمان إنه يظهر فوق أي محتوى */
+            flex-shrink: 0; /* منع التقلص */
+        }
+
+        body.dark-mode .input-container {
+            background: var(--background-dark);
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 15px; /* زيادة المسافة بين الأزرار */
+            padding: 0 1rem 1rem;
+            justify-content: center; /* توسيط الأزرار */
+        }
+
+        .custom-upload-btn {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 25px;
+            padding: 10px 20px; /* زيادة الحجم */
+            font-size: 1rem; /* زيادة حجم الخط */
+        }
+
+            .custom-upload-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            }
+
+            .custom-upload-btn input[type="file"] {
+                position: absolute;
+                left: 0;
+                top: 0;
+                opacity: 0;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
+            }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* مسافة بين حقل الإدخال والزر */
+        }
+
+        #userInput {
+            flex: 1; /* يأخذ كل المساحة المتاحة */
+            padding: 12px; /* زيادة الحشوة */
+            font-size: 1rem; /* زيادة حجم الخط */
+            border-radius: 25px; /* زوايا دائرية */
+        }
+
+        .input-group .btn-danger {
+            padding: 12px 20px; /* زيادة حجم الزر */
+            border-radius: 25px; /* زوايا دائرية */
+        }
+
+        #imagePreview {
+            margin: 10px 1rem;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        .preview-image {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            margin: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .remove-preview {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Escape Razor parsing for CSS rules */
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        // Function to resize the image before uploading
+        function resizeImage(file, maxWidth, maxHeight, callback) {
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                img.src = e.target.result;
+            };
+
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    callback(blob);
+                }, file.type, 0.7); // جودة 70%
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Function to preview the image
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('imagePreview');
+
+            if (file && file.type.startsWith('image/')) {
+                resizeImage(file, 800, 800, (resizedBlob) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        preview.innerHTML = `
+                            <div style="position:relative; display:inline-block;">
+                                <img src="${e.target.result}"
+                                     class="preview-image"
+                                     alt="Image Preview">
+                                <button class="remove-preview"
+                                        onclick="clearImage()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>`;
+                        preview.style.display = 'block';
+
+                        // تحديث الملف المرفوع ليحل محل الملف الأصلي
+                        const newFile = new File([resizedBlob], file.name, { type: file.type });
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(newFile);
+                        document.getElementById('imageInput').files = dataTransfer.files;
+                    };
+                    reader.readAsDataURL(resizedBlob);
+                });
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // Function to clear the image preview
+        function clearImage() {
+            document.getElementById('imageInput').value = '';
+            document.getElementById('imagePreview').innerHTML = '';
+            document.getElementById('imagePreview').style.display = 'none';
+        }
+
+        // Function to send the message
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput");
+            const imageInput = document.getElementById("imageInput");
+            const chatBox = document.getElementById("chat-box");
+
+            const formData = new FormData();
+
+            if (userInput.value.trim()) formData.append("message", userInput.value.trim());
+            if (imageInput.files[0]) formData.append("image", imageInput.files[0]);
+
+            // Add the image preview to the chat
+            if (imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    chatBox.innerHTML += `
+                        <div class="message user">
+                            <img src="${e.target.result}"
+                                 class="preview-image"
+                                 alt="Uploaded Image">
+                        </div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            }
+
+            if (userInput.value.trim()) {
+                chatBox.innerHTML += `
+                    <div class="message user">
+                        ${userInput.value.trim()}
+                    </div>`;
+            }
+
+            userInput.value = '';
+            imageInput.value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            document.getElementById("typing-indicator").style.display = "block";
+
+            try {
+                const response = await fetch("/Chat/SendMessage", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                document.getElementById("typing-indicator").style.display = "none";
+
+                if (data.error) {
+                    chatBox.innerHTML += `
+                        <div class="message bot">
+                            ❌ Error: ${data.error}
+                        </div>`;
+                } else {
+                    chatBox.innerHTML += `
+                        <div class="message bot">
+                            ${data.response}
+                        </div>`;
+                }
+
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById("typing-indicator").style.display = "none";
+                chatBox.innerHTML += `
+                    <div class="message bot">
+                        ❌ Connection Error
+                    </div>`;
+            }
+        }
+
+        // Function to clear the chat
+        async function clearChat() {
+            document.getElementById("chat-box").innerHTML = `
+                <div class="system-message">
+                    Start a conversation with the AI assistant...
+                </div>`;
+
+            try {
+                const response = await fetch("/Chat/ClearChat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    console.error("Failed to clear chat history on server.");
+                }
+            } catch (error) {
+                console.error("Error clearing chat:", error);
+            }
+        }
+
+        // Function to toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle("dark-mode");
+        }
+    </script>
+}

@@ -1,0 +1,21 @@
+# Ignore appsettings.json to prevent uploading sensitive data (like API keys)
+appsettings.json
+
+# Ignore bin and obj folders (compiled files)
+bin/
+obj/
+
+# Ignore Visual Studio user-specific files
+*.csproj.user
+.vs/
+*.suo
+
+# Ignore NuGet packages folder
+packages/
+
+# Ignore temporary files
+*.log
+*.tmp
+
+# Ignore environment-specific files
+*.env
